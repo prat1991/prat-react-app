@@ -33,4 +33,3 @@ jobs:
         protocol: ftp  # Explicitly set protocol to FTP
         local-dir: ./dist/  # The build directory of your Vite/React app
         server-dir: /public_html/  # Your destination directory on Hostinger
-        dangerous-clean-slate: true  # Optional: removes all files in server-dir before uploading

@@ -1,80 +1,77 @@
 # Workflow name that appears in GitHub Actions UI
 name: Deploy to Hostinger
+
 # Define when this workflow will run
 on:
   push:
     branches: [ master ]  # Trigger on pushes to master branch
   workflow_dispatch:      # Allow manual triggering from GitHub UI
+
 # Jobs define the actual work to be performed
 jobs:
   build-and-deploy:       # A single job that handles both building and deploying
     runs-on: ubuntu-latest  # This job runs on a fresh Ubuntu virtual machine
     
-    steps:  # Sequential steps to execute within the job
-    # Step 1: Clone your repository code to the workflow runner with full history
-    - name: Checkout repository
-      uses: actions/checkout@v3  # Standard GitHub action to fetch code
-      with:
-        ref: ${{ github.ref }}  # Explicitly checkout the branch that triggered the workflow
-        
-    # Step 2: Set up the Node.js environment for building your React app
-    - name: Set up Node.js
-      uses: actions/setup-node@v3  # Official GitHub action for Node.js
-      with:
-        node-version: '18'  # Specific Node.js version to use
-        cache: 'npm'        # Enable npm caching
-        
-    # Step 3: Install all dependencies defined in package.json
-    - name: Install dependencies
-      run: npm ci  # Clean install instead of npm install
+    steps:
+      # Step 1: Clone your repository code to the workflow runner
+      - name: Checkout latest code
+        uses: actions/checkout@v3
+        with:
+          ref: master  # Explicitly checkout master branch
       
-    # Step 4: Add timestamp to force new build
-    - name: Create build timestamp
-      id: timestamp
-      run: echo "timestamp=$(date +%s)" >> $GITHUB_OUTPUT
+      # Step 2: Display what code is being deployed
+      - name: Show latest commit info
+        run: |
+          echo "Deploying commit:"
+          git log -1 --pretty=format:'%h - %s (%cr) by %cn'
       
-    # Step 5: Build your React app for production with cache-busting timestamp
-    - name: Build project
-      run: npm run build
-      env:
-        VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
-        VITE_BUILD_ID: ${{ steps.timestamp.outputs.timestamp }}
-        
-    # Step 6: Clear remote directory before uploading
-    - name: Clear remote directory
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.CLOUDHOST_SERVER }}
-        username: ${{ secrets.CLOUDHOST_USERNAME }}
-        password: ${{ secrets.CLOUDHOST_PASSWORD }}
-        port: 21
-        script: |
-          rm -rf /public_html/*
-      continue-on-error: true  # Continue even if this step fails
-        
-    # Step 7: List build directory content for verification
-    - name: List build directory content
-      run: ls -la dist/
+      # Step 3: Set up the Node.js environment for building your React app
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'  # Enable npm caching for faster builds
       
-    # Step 8: Deploy built files to your Hostinger hosting via FTP
-    - name: Deploy to Hostinger
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      with:
-        server: ${{ secrets.CLOUDHOST_SERVER }}
-        username: ${{ secrets.CLOUDHOST_USERNAME }}
-        password: ${{ secrets.CLOUDHOST_PASSWORD }}
-        port: 21
-        local-dir: ./dist/
-        server-dir: /public_html/
-        log-level: verbose
-        dangerous-clean-slate: true  # Force complete directory refresh
-        exclude: |
-          **/.git*
-          **/.git*/**
-          **/node_modules/**
-        
-    # Step 9: Verify deployment with timestamp
-    - name: Deployment verification
-      run: |
-        echo "Deployment completed at $(date)"
-        echo "Build timestamp: ${{ steps.timestamp.outputs.timestamp }}"
+      # Step 4: Install all dependencies defined in package.json
+      - name: Install dependencies
+        run: npm ci  # Clean install to ensure consistent builds
+      
+      # Step 5: Create a timestamp for cache busting
+      - name: Create build timestamp
+        id: timestamp
+        run: echo "timestamp=$(date +%s)" >> $GITHUB_OUTPUT
+      
+      # Step 6: Build your React app for production
+      - name: Build project
+        run: npm run build
+        env:
+          VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
+          VITE_BUILD_ID: ${{ steps.timestamp.outputs.timestamp }}
+      
+      # Step 7: Verify build output
+      - name: List build directory content
+        run: |
+          echo "=== Built files that will be deployed: ==="
+          ls -la dist/
+          echo "=== Contents of index.html ==="
+          cat dist/index.html | grep -A 2 -B 2 script
+      
+      # Step 8: Deploy to Hostinger using FTP
+      - name: Deploy to Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CLOUDHOST_SERVER }}
+          username: ${{ secrets.CLOUDHOST_USERNAME }}
+          password: ${{ secrets.CLOUDHOST_PASSWORD }}
+          port: 21
+          local-dir: ./dist/  # Deploy everything from the build directory
+          server-dir: /public_html/  # Target directory on Hostinger
+          dangerous-clean-slate: true  # Remove all files on server before uploading
+          log-level: verbose  # Show detailed logs for troubleshooting
+      
+      # Step 9: Verify deployment
+      - name: Deployment completion
+        run: |
+          echo "Deployment completed at $(date)"
+          echo "Build timestamp: ${{ steps.timestamp.outputs.timestamp }}"
+          echo "NOTE: If your changes aren't visible, try clearing your browser cache"

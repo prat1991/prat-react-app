@@ -56,18 +56,15 @@ jobs:
           echo "=== Contents of index.html ==="
           cat dist/index.html | grep -A 2 -B 2 script
       
-      # Step 8: Deploy to Hostinger using FTP
-      - name: Deploy to Hostinger
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      # Step 8: Deploy files using an older version of the FTP action
+      - name: Deploy using a different FTP action
+        uses: SamKirkland/FTP-Deploy-Action@4.0.0  # Try an older version
         with:
           server: ${{ secrets.CLOUDHOST_SERVER }}
           username: ${{ secrets.CLOUDHOST_USERNAME }}
           password: ${{ secrets.CLOUDHOST_PASSWORD }}
-          port: 21
-          local-dir: ./dist/  # Deploy everything from the build directory
-          server-dir: /public_html/  # Target directory on Hostinger
-          dangerous-clean-slate: true  # Remove all files on server before uploading
-          log-level: verbose  # Show detailed logs for troubleshooting
+          local-dir: ./dist/
+          server-dir: /public_html/
       
       # Step 9: Verify deployment
       - name: Deployment completion

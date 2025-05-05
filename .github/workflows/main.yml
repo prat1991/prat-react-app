@@ -26,36 +26,27 @@ jobs:
         env:
           VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
       
-      - name: Install FTP client
-        run: sudo apt-get update && sudo apt-get install -y ncftp
+      - name: Debug - List build files
+        run: ls -la dist/
       
-      - name: Deploy to Hostinger
-        env:
-          FTP_SERVER: ${{ secrets.CLOUDHOST_SERVER }}
-          FTP_USERNAME: ${{ secrets.CLOUDHOST_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.CLOUDHOST_PASSWORD }}
+      - name: Basic FTP Upload
         run: |
-          # Create a temporary script file
-          cat > ./ftp-script.txt << EOL
-          open \$FTP_SERVER
-          user \$FTP_USERNAME \$FTP_PASSWORD
-          set confirm off
-          clear
-          cd /public_html
-          lcd ./dist
-          binary
-          prompt off
-          mput *
-          mput -r *
-          quit
-          EOL
+          # Install curl
+          sudo apt-get update
+          sudo apt-get install -y curl
           
-          # Replace variables in the script
-          sed -i "s|\\\$FTP_SERVER|$FTP_SERVER|g" ./ftp-script.txt
-          sed -i "s|\\\$FTP_USERNAME|$FTP_USERNAME|g" ./ftp-script.txt
-          sed -i "s|\\\$FTP_PASSWORD|$FTP_PASSWORD|g" ./ftp-script.txt
+          # Create a simple script to upload each file using curl
+          cd dist
+          find . -type f -print0 | while IFS= read -r -d '' file; do
+            echo "Uploading $file..."
+            # Create directory if needed
+            dirname=$(dirname "$file")
+            if [ "$dirname" != "." ]; then
+              curl -s --ftp-create-dirs -u "${{ secrets.CLOUDHOST_USERNAME }}:${{ secrets.CLOUDHOST_PASSWORD }}" "ftp://${{ secrets.CLOUDHOST_SERVER }}/public_html/${dirname:2}/" || true
+            fi
+            # Upload file
+            curl -T "$file" -u "${{ secrets.CLOUDHOST_USERNAME }}:${{ secrets.CLOUDHOST_PASSWORD }}" "ftp://${{ secrets.CLOUDHOST_SERVER }}/public_html/${file:2}" --ftp-pasv
+            echo "$file uploaded"
+          done
           
-          # Run the script
-          ncftp -f ./ftp-script.txt
-          
-          echo "FTP upload completed"
+          echo "All files uploaded"

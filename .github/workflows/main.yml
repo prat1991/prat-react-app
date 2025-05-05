@@ -35,16 +35,16 @@ jobs:
       with:
         node-version: '18'  # Specific Node.js version to use
         
-    # Step 5: Install all dependencies defined in package.json
+    # Step 5: Install all dependencies defined in package.json with clean install
     - name: Install dependencies
-      run: npm install  # Equivalent to running this command in your terminal
+      run: npm ci  # Clean install instead of npm install
       
-    # Step 6: Build your React app for production with no cache
+    # Step 6: Build your React app for production
     - name: Build project
-      run: npm run build -- --no-cache  # Added --no-cache flag
+      run: npm run build  # Regular build - no additional flags needed
       env:
         VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}  # Access secure environment variable
-        VITE_BUILD_TIMESTAMP: ${{ github.run_id }}-${{ github.run_number }}  # Add timestamp to force cache invalidation
+        VITE_BUILD_TIMESTAMP: ${{ github.run_id }}  # Add timestamp to force cache invalidation
         
     # Step 7: Diagnostic step to verify build output exists
     - name: List build directory content

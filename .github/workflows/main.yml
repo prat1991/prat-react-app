@@ -1,5 +1,5 @@
 # Deployment Workflow Definition:
-# Defines an automated process that runs on GitHub's servers to build and deploy your application
+# Defines an automated process that runs on GitHub's servers to build and deploy  application
 name: Deploy to Hostinger
 
 # Trigger Configuration:

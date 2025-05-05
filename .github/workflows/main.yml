@@ -14,57 +14,54 @@ jobs:
     
     steps:
       # Step 1: Clone your repository code
-      - name: Checkout latest code
+      - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          ref: master
       
-      # Step 2: Display what code is being deployed
-      - name: Show latest commit info
-        run: |
-          echo "Deploying commit:"
-          git log -1 --pretty=format:'%h - %s (%cr) by %cn'
-      
-      # Step 3: Set up Node.js environment
+      # Step 2: Set up Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
       
-      # Step 4: Install dependencies
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm ci
       
-      # Step 5: Build your React app for production
+      # Step 4: Build React application
       - name: Build project
         run: npm run build
         env:
           VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
       
-      # Step 6: Verify build output
-      - name: List built files
+      # Step 5: Create .htaccess for SPA routing in public_html
+      - name: Create .htaccess file
         run: |
-          echo "Files that will be deployed:"
-          ls -la dist/
-          du -sh dist/
+          cat > ./dist/.htaccess << 'EOL'
+          <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteBase /
+            RewriteRule ^index\.html$ - [L]
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteCond %{REQUEST_FILENAME} !-d
+            RewriteCond %{REQUEST_FILENAME} !-l
+            RewriteRule . /index.html [L]
+          </IfModule>
+          EOL
       
-      # Step 7: Install and use lftp for more reliable deployment
-      - name: Install lftp
-        run: sudo apt-get update && sudo apt-get install -y lftp
-      
-      # Step 8: Deploy using lftp (similar to manual FTP)
-      - name: Deploy using lftp
+      # Step 6: List files to be uploaded
+      - name: Show files to be uploaded
         run: |
-          lftp -c "
-          set ftp:ssl-allow no;
-          open ${{ secrets.CLOUDHOST_SERVER }};
-          user ${{ secrets.CLOUDHOST_USERNAME }} ${{ secrets.CLOUDHOST_PASSWORD }};
-          mirror -R ./dist/ /public_html/ --parallel=5 --verbose;
-          bye
-          "
+          echo "Files to be deployed:"
+          find ./dist -type f | sort
+          du -sh ./dist
       
-      # Step 9: Verify deployment
-      - name: Deployment completion
-        run: |
-          echo "Deployment completed at $(date)"
-          echo "NOTE: Check your website to verify the changes are visible"
+      # Step 7: Use a reliable FTP deployment method (basic-ftp)
+      - name: Deploy via FTP
+        uses: sebastianpopp/ftp-action@releases/v2
+        with:
+          host: ${{ secrets.CLOUDHOST_SERVER }}
+          user: ${{ secrets.CLOUDHOST_USERNAME }}
+          password: ${{ secrets.CLOUDHOST_PASSWORD }}
+          localDir: "dist"
+          remoteDir: "public_html"
+          options: "--delete --transfer-all"

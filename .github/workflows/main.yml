@@ -1,7 +1,8 @@
 name: Deploy to Hostinger
 on:
   push:
-    branches: [ main ]  # or master, depending on your default branch
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   build-and-deploy:
@@ -39,7 +40,7 @@ jobs:
         server: ${{ secrets.CLOUDHOST_SERVER }}
         username: ${{ secrets.CLOUDHOST_USERNAME }}
         password: ${{ secrets.CLOUDHOST_PASSWORD }}
-        port: 22  # SFTP usually uses port 22
+        port: 21
         local_path: './dist/*'  # Your build directory
         remote_path: '/public_html/'
         sftp_only: true

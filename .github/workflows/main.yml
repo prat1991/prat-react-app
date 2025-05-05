@@ -11,38 +11,53 @@ jobs:
     runs-on: ubuntu-latest  # This job runs on a fresh Ubuntu virtual machine
     
     steps:  # Sequential steps to execute within the job
-    # Step 1: Clone your repository code to the workflow runner
+    # Step 1: Clone your repository code to the workflow runner with full history and no caching
     - name: Checkout repository
       uses: actions/checkout@v3  # Standard GitHub action to fetch code
-      
-    # Step 2: Set up the Node.js environment for building your React app
+      with:
+        fetch-depth: 0  # Fetch all history to ensure we have the latest changes
+    
+    # Step 2: Force update from remote to ensure latest code
+    - name: Force fetch latest code
+      run: |
+        git fetch --all
+        git reset --hard origin/master
+    
+    # Step 3: Clear any build caches that might prevent latest changes from being included
+    - name: Clear build caches
+      run: |
+        rm -rf ./node_modules/.vite || true
+        rm -rf ./node_modules/.cache || true
+        
+    # Step 4: Set up the Node.js environment for building your React app
     - name: Set up Node.js
       uses: actions/setup-node@v3  # Official GitHub action for Node.js
       with:
         node-version: '18'  # Specific Node.js version to use
         
-    # Step 3: Install all dependencies defined in package.json
+    # Step 5: Install all dependencies defined in package.json
     - name: Install dependencies
       run: npm install  # Equivalent to running this command in your terminal
       
-    # Step 4: Build your React app for production
+    # Step 6: Build your React app for production with no cache
     - name: Build project
-      run: npm run build  # Creates optimized static files in dist/ folder
+      run: npm run build -- --no-cache  # Added --no-cache flag
       env:
         VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}  # Access secure environment variable
+        VITE_BUILD_TIMESTAMP: ${{ github.run_id }}-${{ github.run_number }}  # Add timestamp to force cache invalidation
         
-    # Step 5: Diagnostic step to verify build output exists
+    # Step 7: Diagnostic step to verify build output exists
     - name: List build directory content
       run: ls -la dist/  # Shows all files that will be deployed
       
-    # Step 6: Debug information for troubleshooting connection issues
+    # Step 8: Debug information for troubleshooting connection issues
     - name: Debug FTP connection
       run: |
         echo "Attempting to connect to FTP server using IP address"
         echo "Using username ${{ secrets.FTP_USERNAME }}"
         echo "With standard FTP port 21"
         
-    # Step 7: Deploy built files to your Hostinger hosting via FTP
+    # Step 9: Deploy built files to your Hostinger hosting via FTP
     - name: Deploy to Hostinger
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:

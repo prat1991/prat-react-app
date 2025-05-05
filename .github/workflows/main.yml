@@ -1,35 +1,51 @@
+# Workflow name - appears in GitHub Actions UI for easy identification
 name: Deploy to Hostinger
 
+# Define when this workflow runs - both on push to master branch and manual triggers
 on:
   push:
-    branches: [ master ]
-  workflow_dispatch:
+    branches: [ master ]  # Automatically run when code is pushed to master
+  workflow_dispatch:      # Allow manual triggering from GitHub UI
 
+# Jobs define the actual work to be performed
 jobs:
+  # Single job that handles both building the React app and deploying it
   build-and-deploy:
+    # Use GitHub's Ubuntu virtual machine to run the workflow
     runs-on: ubuntu-latest
     
+    # Sequential steps to execute within the job
     steps:
+      # PREPARATION PHASE
+      
+      # Step 1: Clone the repository code to the GitHub Actions runner
       - name: Checkout code
         uses: actions/checkout@v3
       
+      # Step 2: Set up Node.js environment for building the React app
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '18'  # Use Node.js version 18
       
+      # BUILD PHASE
+      
+      # Step 3: Install project dependencies from package.json
       - name: Install dependencies
-        run: npm ci
+        run: npm ci  # Clean install that follows the lockfile exactly
       
+      # Step 4: Build the React application for production
       - name: Build project
-        run: npm run build
+        run: npm run build  # Creates optimized files in dist/ folder
         env:
-          VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
+          VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}  # Pass API key from GitHub secrets
       
-      - name: Deploy via curl
+      # SPA CONFIGURATION
+      
+      # Step 5: Create .htaccess file to handle SPA routing on Apache server
+      - name: Create .htaccess for SPA routing
         run: |
           cd dist
-          # Create a .htaccess file for proper SPA routing
           cat > .htaccess << 'EOL'
           <IfModule mod_rewrite.c>
             RewriteEngine On
@@ -41,18 +57,24 @@ jobs:
             RewriteRule . /index.html [L]
           </IfModule>
           EOL
-          
-          # Upload each file individually using curl
-          find . -type f -print0 | while IFS= read -r -d '' file; do
-            echo "Uploading $file..."
-            # Create directory if needed
-            dirname=$(dirname "$file")
-            if [ "$dirname" != "." ]; then
-              curl -s --ftp-create-dirs -u "${{ secrets.CLOUDHOST_USERNAME }}:${{ secrets.CLOUDHOST_PASSWORD }}" "ftp://${{ secrets.CLOUDHOST_SERVER }}/public_html/${dirname:2}/" || true
-            fi
-            # Upload file
-            curl -T "$file" -u "${{ secrets.CLOUDHOST_USERNAME }}:${{ secrets.CLOUDHOST_PASSWORD }}" "ftp://${{ secrets.CLOUDHOST_SERVER }}/public_html/${file:2}" --ftp-pasv
-            echo "$file uploaded"
-          done
-          
-          echo "All files uploaded"
+      
+      # DEPLOYMENT PHASE
+      
+      # Step 6: Install a robust FTP client
+      - name: Install FTP client
+        run: sudo apt-get update && sudo apt-get install -y lftp
+      
+      # Step 7: Deploy all built files to Hostinger via FTP
+      - name: Deploy to Hostinger via FTP
+        run: |
+          # Use lftp's mirror command for reliable directory synchronization
+          cd dist
+          lftp -c "
+          set ftp:ssl-allow false;           # Disable SSL as per Hostinger recommendations
+          set ssl:verify-certificate no;     # Don't verify SSL certificates
+          open ftp://${{ secrets.CLOUDHOST_SERVER }};  # Connect to FTP server
+          user ${{ secrets.CLOUDHOST_USERNAME }} ${{ secrets.CLOUDHOST_PASSWORD }};  # Authenticate
+          mirror -R --delete --verbose ./ /public_html/;  # Upload with recursive mirroring
+          bye                                # Close connection
+          "
+          echo "All files uploaded to Hostinger"

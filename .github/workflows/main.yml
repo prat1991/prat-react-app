@@ -1,12 +1,10 @@
 # Workflow name that appears in GitHub Actions UI
 name: Deploy to Hostinger
-
 # Define when this workflow will run
 on:
   push:
     branches: [ master ]  # Trigger on pushes to master branch
   workflow_dispatch:      # Allow manual triggering from GitHub UI
-
 # Jobs define the actual work to be performed
 jobs:
   build-and-deploy:       # A single job that handles both building and deploying
@@ -44,14 +42,14 @@ jobs:
         echo "Using username ${{ secrets.FTP_USERNAME }}"
         echo "With standard FTP port 21"
         
-    # Step 7: Deploy built files to your Hostinger hosting via SFTP
-    - name: Deploy via SFTP
-      uses: wlixcc/SFTP-Deploy-Action@v1.2.4  # Third-party action for SFTP deployment
+    # Step 7: Deploy built files to your Hostinger hosting via FTP
+    - name: Deploy via FTP
+      uses: wlixcc/SFTP-Deploy-Action@v1.2.4  # This action works for both FTP and SFTP
       with:
         server: ${{ secrets.CLOUDHOST_SERVER }}  # Your Hostinger server address
         username: ${{ secrets.CLOUDHOST_USERNAME }}  # Your Hostinger username
         password: ${{ secrets.CLOUDHOST_PASSWORD }}  # Your Hostinger password (stored securely)
-        port: 21  # Standard FTP port (should be 22 if truly using SFTP)
+        port: 21  # Standard FTP port
         local_path: './dist/*'  # The folder containing your built React app
         remote_path: '/public_html/'  # Target directory on your Hostinger server
-        sftp_only: true  # Force using SFTP protocol even though port 21 is specified
+        sftp_only: false  # Use regular FTP protocol

@@ -11,53 +11,52 @@ jobs:
     runs-on: ubuntu-latest  # This job runs on a fresh Ubuntu virtual machine
     
     steps:  # Sequential steps to execute within the job
-    # Step 1: Clone your repository code to the workflow runner with full history and no caching
+    # Step 1: Clone your repository code to the workflow runner with full history
     - name: Checkout repository
       uses: actions/checkout@v3  # Standard GitHub action to fetch code
       with:
-        fetch-depth: 0  # Fetch all history to ensure we have the latest changes
-    
-    # Step 2: Force update from remote to ensure latest code
-    - name: Force fetch latest code
-      run: |
-        git fetch --all
-        git reset --hard origin/master
-    
-    # Step 3: Clear any build caches that might prevent latest changes from being included
-    - name: Clear build caches
-      run: |
-        rm -rf ./node_modules/.vite || true
-        rm -rf ./node_modules/.cache || true
+        ref: ${{ github.ref }}  # Explicitly checkout the branch that triggered the workflow
         
-    # Step 4: Set up the Node.js environment for building your React app
+    # Step 2: Set up the Node.js environment for building your React app
     - name: Set up Node.js
       uses: actions/setup-node@v3  # Official GitHub action for Node.js
       with:
         node-version: '18'  # Specific Node.js version to use
+        cache: 'npm'        # Enable npm caching
         
-    # Step 5: Install all dependencies defined in package.json with clean install
+    # Step 3: Install all dependencies defined in package.json
     - name: Install dependencies
       run: npm ci  # Clean install instead of npm install
       
-    # Step 6: Build your React app for production
-    - name: Build project
-      run: npm run build  # Regular build - no additional flags needed
-      env:
-        VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}  # Access secure environment variable
-        VITE_BUILD_TIMESTAMP: ${{ github.run_id }}  # Add timestamp to force cache invalidation
-        
-    # Step 7: Diagnostic step to verify build output exists
-    - name: List build directory content
-      run: ls -la dist/  # Shows all files that will be deployed
+    # Step 4: Add timestamp to force new build
+    - name: Create build timestamp
+      id: timestamp
+      run: echo "timestamp=$(date +%s)" >> $GITHUB_OUTPUT
       
-    # Step 8: Debug information for troubleshooting connection issues
-    - name: Debug FTP connection
-      run: |
-        echo "Attempting to connect to FTP server using IP address"
-        echo "Using username ${{ secrets.FTP_USERNAME }}"
-        echo "With standard FTP port 21"
+    # Step 5: Build your React app for production with cache-busting timestamp
+    - name: Build project
+      run: npm run build
+      env:
+        VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
+        VITE_BUILD_ID: ${{ steps.timestamp.outputs.timestamp }}
         
-    # Step 9: Deploy built files to your Hostinger hosting via FTP
+    # Step 6: Clear remote directory before uploading
+    - name: Clear remote directory
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.CLOUDHOST_SERVER }}
+        username: ${{ secrets.CLOUDHOST_USERNAME }}
+        password: ${{ secrets.CLOUDHOST_PASSWORD }}
+        port: 21
+        script: |
+          rm -rf /public_html/*
+      continue-on-error: true  # Continue even if this step fails
+        
+    # Step 7: List build directory content for verification
+    - name: List build directory content
+      run: ls -la dist/
+      
+    # Step 8: Deploy built files to your Hostinger hosting via FTP
     - name: Deploy to Hostinger
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
@@ -65,11 +64,17 @@ jobs:
         username: ${{ secrets.CLOUDHOST_USERNAME }}
         password: ${{ secrets.CLOUDHOST_PASSWORD }}
         port: 21
-        local-dir: ./dist/  # Make sure this matches your build output directory
+        local-dir: ./dist/
         server-dir: /public_html/
         log-level: verbose
-        dangerous-clean-slate: true  # Changed to true to force complete refresh
+        dangerous-clean-slate: true  # Force complete directory refresh
         exclude: |
           **/.git*
           **/.git*/**
           **/node_modules/**
+        
+    # Step 9: Verify deployment with timestamp
+    - name: Deployment verification
+      run: |
+        echo "Deployment completed at $(date)"
+        echo "Build timestamp: ${{ steps.timestamp.outputs.timestamp }}"

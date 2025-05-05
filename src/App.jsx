@@ -146,7 +146,7 @@ const App = () => {
         {/* Header Section */}
         <header>
           <img src="./hero.png" alt="Hero Banner" />
-          <h1>Hello Ava,<br/> Find <span className="text-gradient">Movies You'll Enjoy</span></h1>
+          <h1>Hello A,<br/> Find <span className="text-gradient">Movies You'll Enjoy</span></h1>
           {/* Search Component:
               Implements controlled component pattern with bidirectional data flow */}
           <Search searchTerm={searchTerm} setSearchTerm={setSearchTerm} />

@@ -28,9 +28,9 @@ jobs:
     - name: Deploy to Hostinger
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        port: ${{ secrets.FTP_PORT }}
+        server: ${{ secrets.CLOUDHOST_SERVER }}
+        username: ${{ secrets.CLOUDHOST_USERNAME }}
+        password: ${{ secrets.CLOUDHOST_PASSWORD }}
+        port: ${{ secrets.CLOUDHOST_PORT }}
         local-dir: ./dist/  # The build directory of your Vite/React app
         server-dir: /public_html/  # Your destination directory on Hostinger

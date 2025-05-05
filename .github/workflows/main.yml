@@ -50,4 +50,7 @@ jobs:
         username: ${{ secrets.CLOUDHOST_USERNAME }}
         password: ${{ secrets.CLOUDHOST_PASSWORD }}
         port: 21
-        log-level: verbose  # Add this line for detailed logs
+        local-dir: ./dist/
+        server-dir: /public_html/
+        log-level: verbose
+        dangerous-clean-slate: false  # Set to false to avoid removing directories

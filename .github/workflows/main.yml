@@ -50,7 +50,11 @@ jobs:
         username: ${{ secrets.CLOUDHOST_USERNAME }}
         password: ${{ secrets.CLOUDHOST_PASSWORD }}
         port: 21
-        local-dir: ./dist/
+        local-dir: ./dist/  # Make sure this matches your build output directory
         server-dir: /public_html/
         log-level: verbose
-        dangerous-clean-slate: false  # Set to false to avoid removing directories
+        dangerous-clean-slate: true  # Changed to true to force complete refresh
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**

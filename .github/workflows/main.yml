@@ -1,81 +1,49 @@
-# Deployment Workflow Definition:
-# Defines an automated process that runs on GitHub's servers to build and deploy  application
 name: Deploy to Hostinger
 
-# Trigger Configuration:
-# Specifies when this workflow should automatically run
 on:
   push:
-    branches: [ main ]  # Triggers whenever code is pushed to the main branch
-  workflow_dispatch:    # Allows manual triggering from GitHub interface
+    branches: [ main ]  # or master, depending on your default branch
+  workflow_dispatch:
 
-# Jobs Definition:
-# A workflow consists of one or more jobs that can run sequentially or in parallel
 jobs:
-  # Build and Deploy Job:
-  # Combines application building and deployment into a single job for simplicity
   build-and-deploy:
-    runs-on: ubuntu-latest  # Specifies the virtual environment to run the job
+    runs-on: ubuntu-latest
     
-    # Sequential Steps:
-    # Each step runs one after another; if any step fails, the job stops
     steps:
-    # Source Code Acquisition:
-    # Downloads your repository code to the GitHub runner
     - name: Checkout repository
       uses: actions/checkout@v3
       
-    # Environment Setup:
-    # Prepares the necessary tools and runtime for your project
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '18'  # Specifies Node.js version for compatibility
+        node-version: '18'
         
-    # Dependency Resolution:
-    # Installs all packages required by your application
     - name: Install dependencies
       run: npm install
       
-    # Application Building:
-    # Compiles, optimizes, and bundles your source code into deployable assets
     - name: Build project
       run: npm run build
       env:
-        VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}  # Injects API key from GitHub secrets
+        VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
         
-    # Verification Step:
-    # Confirms build output exists and displays directory content for debugging
     - name: List build directory content
       run: ls -la dist/
       
-    # Connection Debugging:
-    # Logs FTP connection parameters for troubleshooting (masks sensitive values)
     - name: Debug FTP connection
       run: |
-        echo "Attempting to connect to FTP server using domain name"
-        echo "Using configured FTP username"
-        echo "With standard FTP port"
+        echo "Attempting to connect to FTP server ${{ secrets.FTP_SERVER }}"
+        echo "Using username ${{ secrets.FTP_USERNAME }}"
+        echo "With port ${{ secrets.FTP_PORT }}"
         
-    # Deployment Execution:
-    # Transfers built files to hosting server via FTP
     - name: Deploy to Hostinger
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
-        # Connection Configuration:
-        # Defines how to connect to the remote server
-        server: prat.cloud  # Using domain name for reliable connection
+        server: prat.cloud  # Try using your domain directly
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         port: ${{ secrets.FTP_PORT }}
-        
-        # Directory Mapping:
-        # Specifies which local files go to which remote location
-        local-dir: ./dist/  # Source directory containing built files
-        server-dir: /public_html/  # Destination directory on hosting server
-        
-        # Deployment Options:
-        # Controls behavior of the deployment process
-        dangerous-clean-slate: true  # Removes existing files before uploading
-        timeout: 60000  # Extends connection timeout for reliability (in milliseconds)
-        log-level: verbose  # Increases logging detail for better debugging
+        local-dir: ./dist/
+        server-dir: /public_html/
+        dangerous-clean-slate: true
+        timeout: 60000
+        log-level: verbose

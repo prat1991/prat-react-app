@@ -43,13 +43,11 @@ jobs:
         echo "With standard FTP port 21"
         
     # Step 7: Deploy built files to your Hostinger hosting via FTP
-    - name: Deploy via FTP
-      uses: wlixcc/SFTP-Deploy-Action@v1.2.4  # This action works for both FTP and SFTP
+    - name: Deploy to Hostinger
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
-        server: ${{ secrets.CLOUDHOST_SERVER }}  # Your Hostinger server address
-        username: ${{ secrets.CLOUDHOST_USERNAME }}  # Your Hostinger username
-        password: ${{ secrets.CLOUDHOST_PASSWORD }}  # Your Hostinger password (stored securely)
-        port: 21  # Standard FTP port
-        local_path: './dist/*'  # The folder containing your built React app
-        remote_path: '/public_html/'  # Target directory on your Hostinger server
-        sftp_only: false  # Use regular FTP protocol
+        server: ${{ secrets.CLOUDHOST_SERVER }}
+        username: ${{ secrets.CLOUDHOST_USERNAME }}
+        password: ${{ secrets.CLOUDHOST_PASSWORD }}
+        port: 21
+        log-level: verbose  # Add this line for detailed logs

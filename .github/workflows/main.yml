@@ -26,17 +26,23 @@ jobs:
         env:
           VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
       
-      - name: Debug - List build files
-        run: ls -la dist/
-      
-      - name: Basic FTP Upload
+      - name: Deploy via curl
         run: |
-          # Install curl
-          sudo apt-get update
-          sudo apt-get install -y curl
-          
-          # Create a simple script to upload each file using curl
           cd dist
+          # Create a .htaccess file for proper SPA routing
+          cat > .htaccess << 'EOL'
+          <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteBase /
+            RewriteRule ^index\.html$ - [L]
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteCond %{REQUEST_FILENAME} !-d
+            RewriteCond %{REQUEST_FILENAME} !-l
+            RewriteRule . /index.html [L]
+          </IfModule>
+          EOL
+          
+          # Upload each file individually using curl
           find . -type f -print0 | while IFS= read -r -d '' file; do
             echo "Uploading $file..."
             # Create directory if needed

@@ -1,9 +1,7 @@
 name: Deploy to Hostinger
-
 on:
   push:
     branches: [ master ]  # Change to 'main' if that's your default branch
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -31,6 +29,8 @@ jobs:
         server: ${{ secrets.CLOUDHOST_SERVER }}
         username: ${{ secrets.CLOUDHOST_USERNAME }}
         password: ${{ secrets.CLOUDHOST_PASSWORD }}
-        port: ${{ secrets.CLOUDHOST_PORT }}
+        port: 21  # Hostinger typically uses port 21 for FTP
+        protocol: ftp  # Explicitly set protocol to FTP
         local-dir: ./dist/  # The build directory of your Vite/React app
         server-dir: /public_html/  # Your destination directory on Hostinger
+        dangerous-clean-slate: true  # Optional: removes all files in server-dir before uploading

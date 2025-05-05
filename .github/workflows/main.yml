@@ -9,15 +9,15 @@ on:
 
 # Jobs define the actual work to be performed
 jobs:
-  build-and-deploy:       # A single job that handles both building and deploying
-    runs-on: ubuntu-latest  # This job runs on a fresh Ubuntu virtual machine
+  build-and-deploy:
+    runs-on: ubuntu-latest
     
     steps:
-      # Step 1: Clone your repository code to the workflow runner
+      # Step 1: Clone your repository code
       - name: Checkout latest code
         uses: actions/checkout@v3
         with:
-          ref: master  # Explicitly checkout master branch
+          ref: master
       
       # Step 2: Display what code is being deployed
       - name: Show latest commit info
@@ -25,50 +25,46 @@ jobs:
           echo "Deploying commit:"
           git log -1 --pretty=format:'%h - %s (%cr) by %cn'
       
-      # Step 3: Set up the Node.js environment for building your React app
+      # Step 3: Set up Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'  # Enable npm caching for faster builds
       
-      # Step 4: Install all dependencies defined in package.json
+      # Step 4: Install dependencies
       - name: Install dependencies
-        run: npm ci  # Clean install to ensure consistent builds
+        run: npm ci
       
-      # Step 5: Create a timestamp for cache busting
-      - name: Create build timestamp
-        id: timestamp
-        run: echo "timestamp=$(date +%s)" >> $GITHUB_OUTPUT
-      
-      # Step 6: Build your React app for production
+      # Step 5: Build your React app for production
       - name: Build project
         run: npm run build
         env:
           VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
-          VITE_BUILD_ID: ${{ steps.timestamp.outputs.timestamp }}
       
-      # Step 7: Verify build output
-      - name: List build directory content
+      # Step 6: Verify build output
+      - name: List built files
         run: |
-          echo "=== Built files that will be deployed: ==="
+          echo "Files that will be deployed:"
           ls -la dist/
-          echo "=== Contents of index.html ==="
-          cat dist/index.html | grep -A 2 -B 2 script
+          du -sh dist/
       
-      # Step 8: Deploy files using an older version of the FTP action
-      - name: Deploy using a different FTP action
-        uses: SamKirkland/FTP-Deploy-Action@4.0.0  # Try an older version
-        with:
-          server: ${{ secrets.CLOUDHOST_SERVER }}
-          username: ${{ secrets.CLOUDHOST_USERNAME }}
-          password: ${{ secrets.CLOUDHOST_PASSWORD }}
-          local-dir: ./dist/
-          server-dir: /public_html/
+      # Step 7: Install and use lftp for more reliable deployment
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+      
+      # Step 8: Deploy using lftp (similar to manual FTP)
+      - name: Deploy using lftp
+        run: |
+          lftp -c "
+          set ftp:ssl-allow no;
+          open ${{ secrets.CLOUDHOST_SERVER }};
+          user ${{ secrets.CLOUDHOST_USERNAME }} ${{ secrets.CLOUDHOST_PASSWORD }};
+          mirror -R ./dist/ /public_html/ --parallel=5 --verbose;
+          bye
+          "
       
       # Step 9: Verify deployment
       - name: Deployment completion
         run: |
           echo "Deployment completed at $(date)"
-          echo "Build timestamp: ${{ steps.timestamp.outputs.timestamp }}"
-          echo "NOTE: If your changes aren't visible, try clearing your browser cache"
+          echo "NOTE: Check your website to verify the changes are visible"
